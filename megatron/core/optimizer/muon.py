@@ -84,7 +84,7 @@ class TensorParallelMuon(OrthogonalizedOptimizer):
                 coefficient_type=coefficient_type,
                 tp_group=tp_group,
                 partition_dim=partition_dim,
-                mode="duplicated" if mode == "blockwise" else mode,
+                tp_mode="duplicated" if mode == "blockwise" else mode,
             )
             scale_factor = get_muon_scale_factor(size[0], size[1], mode=scale_mode)
             return orth_grad * scale_factor * extra_scale_factor
@@ -251,12 +251,11 @@ def get_megatron_muon_optimizer(
             # TODO(deyuf): currently only allow 2D non-embedding weight to avoid breaking
             if (
                 not getattr(param, 'is_embedding_or_output_parameter', False)
-                and len(param.shape) == 2
+                and len(param.shape) >= 2
             ):
                 linear_params.append(param)
             else:
                 nonlinear_params.append(param)
-
     muon_kwargs = {
         "lr": config.lr,
         "momentum_beta": config.muon_momentum,
@@ -271,6 +270,7 @@ def get_megatron_muon_optimizer(
         "extra_scale_factor": config.muon_extra_scale_factor,
         "pg_collection": pg_collection,
         "mode": config.muon_tp_mode,
+        "use_decoupled_weight_decay": config.decoupled_weight_decay,
     }
 
     # freezing nonlinear params and get param groups for muon
